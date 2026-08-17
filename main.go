@@ -38,9 +38,22 @@ func init() {
 }
 
 func (p *clapdhtPlugin) GetSimilarSongsByTrack(input metadata.SimilarSongsByTrackRequest) (*metadata.SimilarSongsResponse, error) {
-	logInfo(fmt.Sprintf("GetSimilarSongsByTrack (track ID: %s, Name: %s, Artist: %s)", input.ID, input.Name, input.Artist))
+	logInfo(fmt.Sprintf("GetSimilarSongsByTrack (ID: %s, Song: %s, Artist: %s)", input.ID, input.Name, input.Artist))
+	return p.GetSimilarSongs(input.ID, "", "", int(input.Count))
+}
 
-	tracks, err := p.queryAPI(input.ID, int(input.Count))
+func (p *clapdhtPlugin) GetSimilarSongsByAlbum(input metadata.SimilarSongsByAlbumRequest) (*metadata.SimilarSongsResponse, error) {
+	logInfo(fmt.Sprintf("GetSimilarSongsByAlbum (ID: %s, Album: %s, Artist: %s)", input.ID, input.Name, input.Artist))
+	return p.GetSimilarSongs("", input.ID, "", int(input.Count))
+}
+
+func (p *clapdhtPlugin) GetSimilarSongsByArtist(input metadata.SimilarSongsByArtistRequest) (*metadata.SimilarSongsResponse, error) {
+	logInfo(fmt.Sprintf("GetSimilarSongsByArtist (ID: %s, Artist: %s)", input.ID, input.Name))
+	return p.GetSimilarSongs("", "", input.ID, int(input.Count))
+}
+
+func (p *clapdhtPlugin) GetSimilarSongs(songId string, albumId string, artistId string, count int) (*metadata.SimilarSongsResponse, error) {
+	tracks, err := p.queryAPI(songId, albumId, artistId, count)
 	if err != nil {
 		logError(err)
 		return nil, err
@@ -59,7 +72,7 @@ func (p *clapdhtPlugin) GetSimilarSongsByTrack(input metadata.SimilarSongsByTrac
 	return &metadata.SimilarSongsResponse{Songs: songs}, nil
 }
 
-func (p *clapdhtPlugin) queryAPI(itemID string, count int) ([]TrackResponse, error) {
+func (p *clapdhtPlugin) queryAPI(songId string, albumId string, artistId string, count int) ([]TrackResponse, error) {
 	apiBaseURL, ok := pdk.GetConfig(configAPIUrl)
 
 	if !ok {
@@ -68,8 +81,17 @@ func (p *clapdhtPlugin) queryAPI(itemID string, count int) ([]TrackResponse, err
 
 	params := url.Values{}
 	params.Set("limit", strconv.Itoa(count))
+	if songId != "" {
+		params.Set("songId", songId)
+	}
+	if albumId != "" {
+		params.Set("albumId", albumId)
+	}
+	if artistId != "" {
+		params.Set("artistId", artistId)
+	}
 
-	apiURL := fmt.Sprintf("%s/query/%s?%s", apiBaseURL, itemID, params.Encode())
+	apiURL := fmt.Sprintf("%s/similar_songs?%s", apiBaseURL, params.Encode())
 	logInfo(fmt.Sprintf("query API: %s", apiURL))
 
 	resp, err := host.HTTPSend(host.HTTPRequest{
