@@ -15,9 +15,11 @@ import (
 const configAPIUrl = "apiUrl"
 
 type TrackResponse struct {
-	Path       string  `json:"path"`
-	ExternalId string  `json:"external_id"`
-	Score      float64 `json:"score"`
+	Path     string  `json:"path"`
+	SongId   string  `json:"songId"`
+	AlbumId  string  `json:"albumId"`
+	ArtistId string  `json:"artistId"`
+	Score    float64 `json:"score"`
 }
 
 type clapdhtPlugin struct{}
@@ -63,7 +65,7 @@ func (p *clapdhtPlugin) GetSimilarSongs(songId string, albumId string, artistId 
 	songs := make([]types.SongRef, 0, len(tracks))
 	for _, track := range tracks {
 		songs = append(songs, types.SongRef{
-			ID: track.ExternalId,
+			ID: track.SongId,
 		})
 	}
 
