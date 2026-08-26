@@ -2,4 +2,4 @@ services:
     builder:
         build: .
         volumes:
-        - .:/app/clap_dht_navidrome
+        - .:/app/clapclap_navidrome

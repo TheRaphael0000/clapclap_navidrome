@@ -1,4 +1,4 @@
-module github.com/TheRaphael0000/clap_dht_navidrome
+module github.com/TheRaphael0000/clapclap_navidrome
 
 go 1.25
 
