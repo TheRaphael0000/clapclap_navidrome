@@ -13,6 +13,9 @@ import (
 )
 
 const configAPIUrl = "apiUrl"
+const temperatureTrackSimilarity = "temperatureTrackSimilarity"
+const temperatureAlbumSimilarity = "temperatureAlbumSimilarity"
+const temperatureArtistSimilarity = "temperatureArtistSimilarity"
 
 type TrackResponse struct {
 	Path     string  `json:"path"`
@@ -22,9 +25,9 @@ type TrackResponse struct {
 	Score    float64 `json:"score"`
 }
 
-type clapdhtPlugin struct{}
+type clapclapPlugin struct{}
 
-const LOG_PREFIX = "[ClapDHT]"
+const LOG_PREFIX = "[clapclap]"
 
 func logInfo(text string) {
 	pdk.Log(pdk.LogInfo, fmt.Sprintf("%s %s", LOG_PREFIX, text))
@@ -35,27 +38,42 @@ func logError(text error) {
 }
 
 func init() {
-	metadata.Register(&clapdhtPlugin{})
+	metadata.Register(&clapclapPlugin{})
 	logInfo("Plugin Loaded")
 }
 
-func (p *clapdhtPlugin) GetSimilarSongsByTrack(input metadata.SimilarSongsByTrackRequest) (*metadata.SimilarSongsResponse, error) {
+func (p *clapclapPlugin) GetSimilarSongsByTrack(input metadata.SimilarSongsByTrackRequest) (*metadata.SimilarSongsResponse, error) {
 	logInfo(fmt.Sprintf("GetSimilarSongsByTrack (ID: %s, Song: %s, Artist: %s)", input.ID, input.Name, input.Artist))
-	return p.GetSimilarSongs(input.ID, "", "", int(input.Count))
+	temperatureStr, ok := pdk.GetConfig(temperatureTrackSimilarity)
+	if !ok {
+		return nil, fmt.Errorf("No " + temperatureTrackSimilarity + " set")
+	}
+	temperature, _ := strconv.ParseFloat(temperatureStr, 64)
+	return p.GetSimilarSongs(input.ID, "", "", input.Count, temperature)
 }
 
-func (p *clapdhtPlugin) GetSimilarSongsByAlbum(input metadata.SimilarSongsByAlbumRequest) (*metadata.SimilarSongsResponse, error) {
+func (p *clapclapPlugin) GetSimilarSongsByAlbum(input metadata.SimilarSongsByAlbumRequest) (*metadata.SimilarSongsResponse, error) {
 	logInfo(fmt.Sprintf("GetSimilarSongsByAlbum (ID: %s, Album: %s, Artist: %s)", input.ID, input.Name, input.Artist))
-	return p.GetSimilarSongs("", input.ID, "", int(input.Count))
+	temperatureStr, ok := pdk.GetConfig(temperatureAlbumSimilarity)
+	if !ok {
+		return nil, fmt.Errorf("No " + temperatureAlbumSimilarity + " set")
+	}
+	temperature, _ := strconv.ParseFloat(temperatureStr, 64)
+	return p.GetSimilarSongs("", input.ID, "", input.Count, temperature)
 }
 
-func (p *clapdhtPlugin) GetSimilarSongsByArtist(input metadata.SimilarSongsByArtistRequest) (*metadata.SimilarSongsResponse, error) {
+func (p *clapclapPlugin) GetSimilarSongsByArtist(input metadata.SimilarSongsByArtistRequest) (*metadata.SimilarSongsResponse, error) {
 	logInfo(fmt.Sprintf("GetSimilarSongsByArtist (ID: %s, Artist: %s)", input.ID, input.Name))
-	return p.GetSimilarSongs("", "", input.ID, int(input.Count))
+	temperatureStr, ok := pdk.GetConfig(temperatureArtistSimilarity)
+	if !ok {
+		return nil, fmt.Errorf("No " + temperatureArtistSimilarity + " set")
+	}
+	temperature, _ := strconv.ParseFloat(temperatureStr, 64)
+	return p.GetSimilarSongs("", "", input.ID, input.Count, temperature)
 }
 
-func (p *clapdhtPlugin) GetSimilarSongs(songId string, albumId string, artistId string, count int) (*metadata.SimilarSongsResponse, error) {
-	tracks, err := p.queryAPI(songId, albumId, artistId, count)
+func (p *clapclapPlugin) GetSimilarSongs(songId string, albumId string, artistId string, count int32, temperature float64) (*metadata.SimilarSongsResponse, error) {
+	tracks, err := p.queryAPI(songId, albumId, artistId, count, temperature)
 	if err != nil {
 		logError(err)
 		return nil, err
@@ -74,15 +92,16 @@ func (p *clapdhtPlugin) GetSimilarSongs(songId string, albumId string, artistId 
 	return &metadata.SimilarSongsResponse{Songs: songs}, nil
 }
 
-func (p *clapdhtPlugin) queryAPI(songId string, albumId string, artistId string, count int) ([]TrackResponse, error) {
+func (p *clapclapPlugin) queryAPI(songId string, albumId string, artistId string, count int32, temperature float64) ([]TrackResponse, error) {
 	apiBaseURL, ok := pdk.GetConfig(configAPIUrl)
 
 	if !ok {
-		return nil, fmt.Errorf("No API URL set")
+		return nil, fmt.Errorf("No " + configAPIUrl + " set")
 	}
 
 	params := url.Values{}
-	params.Set("limit", strconv.Itoa(count))
+	params.Set("limit", fmt.Sprint(count))
+	params.Set("temperature", fmt.Sprint(temperature))
 	if songId != "" {
 		params.Set("songId", songId)
 	}
