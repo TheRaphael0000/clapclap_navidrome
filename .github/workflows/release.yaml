@@ -44,3 +44,4 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./clapclap.ndp
           asset_name: clapclap.ndp
+          asset_content_type: application/x-binary
