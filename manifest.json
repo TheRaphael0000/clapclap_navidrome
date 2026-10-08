@@ -14,19 +14,19 @@
 				},
 				"temperatureTrackSimilarity": {
 					"type": "string",
-					"title": "Temperature for Track Similarity",
-					"description": "Track Radio Randomness [Between zero and one] zero means \"static\" recommandations, one means a lot more randomness, more randomness can have an effect on performance",
+					"title": "Temperature for TrackSimilarity",
+					"description": "(Recommandations randomness) Between zero and one: zero means \"static\" recommandations, one means a lot more randomness, more randomness can have an effect on performance",
 					"default": "0"
 				},
 				"temperatureAlbumSimilarity": {
 					"type": "string",
-					"title": "Temperature for Album Similarity",
+					"title": "Temperature for AlbumSimilarity",
 					"description": "(check above)",
 					"default": "0"
 				},
 				"temperatureArtistSimilarity": {
 					"type": "string",
-					"title": "Temperature for Artist Similarity",
+					"title": "Temperature for ArtistSimilarity",
 					"description": "(check above)",
 					"default": "0"
 				}
