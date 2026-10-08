@@ -1,7 +1,7 @@
 {
 	"name": "clapclap",
 	"author": "TheRaphael0000",
-	"version": "1.0.0",
+	"version": "dev",
 	"config": {
 		"schema": {
 			"type": "object",
