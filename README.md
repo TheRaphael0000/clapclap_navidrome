@@ -1,4 +1,4 @@
-# Clapclap
+# Clapclap Navidrome Plugin
 
 This is the Navidrome plugin for the clapclap project.
 
