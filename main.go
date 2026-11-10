@@ -17,10 +17,15 @@ const temperatureTrackSimilarity = "temperatureTrackSimilarity"
 const temperatureAlbumSimilarity = "temperatureAlbumSimilarity"
 const temperatureArtistSimilarity = "temperatureArtistSimilarity"
 
-type TrackResponse struct {
+type SimilarSongsResponse struct {
 	Path     string  `json:"path"`
 	SongId   string  `json:"songId"`
 	AlbumId  string  `json:"albumId"`
+	ArtistId string  `json:"artistId"`
+	Score    float64 `json:"score"`
+}
+
+type SimilarArtistsResponse struct {
 	ArtistId string  `json:"artistId"`
 	Score    float64 `json:"score"`
 }
@@ -73,10 +78,28 @@ func (p *clapclapPlugin) GetSimilarSongsByArtist(input metadata.SimilarSongsByAr
 }
 
 func (p *clapclapPlugin) GetSimilarSongs(songId string, albumId string, artistId string, count int32, temperature float64) (*metadata.SimilarSongsResponse, error) {
-	tracks, err := p.queryAPI(songId, albumId, artistId, count, temperature)
+	params := url.Values{}
+	params.Set("limit", fmt.Sprint(count))
+	params.Set("temperature", fmt.Sprint(temperature))
+	if songId != "" {
+		params.Set("songId", songId)
+	}
+	if albumId != "" {
+		params.Set("albumId", albumId)
+	}
+	if artistId != "" {
+		params.Set("artistId", artistId)
+	}
+
+	body, err := p.queryAPI("similar_songs", params)
 	if err != nil {
 		logError(err)
 		return nil, err
+	}
+
+	var tracks []SimilarSongsResponse
+	if err := json.Unmarshal(body, &tracks); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	// Convert to Navidrome SongRef format preserving order
@@ -92,27 +115,42 @@ func (p *clapclapPlugin) GetSimilarSongs(songId string, albumId string, artistId
 	return &metadata.SimilarSongsResponse{Songs: songs}, nil
 }
 
-func (p *clapclapPlugin) queryAPI(songId string, albumId string, artistId string, count int32, temperature float64) ([]TrackResponse, error) {
+func (p *clapclapPlugin) GetSimilarArtists(input metadata.SimilarArtistsRequest) (*metadata.SimilarArtistsResponse, error) {
+	params := url.Values{}
+	params.Set("limit", fmt.Sprint(input.Limit))
+	params.Set("artistId", fmt.Sprint(input.ID))
+
+	body, err := p.queryAPI("similar_artists", params)
+	if err != nil {
+		logError(err)
+		return nil, err
+	}
+
+	var artistsResponse []SimilarArtistsResponse
+	if err := json.Unmarshal(body, &artistsResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	artists := make([]types.ArtistRef, 0, len(artistsResponse))
+	for _, artist := range artistsResponse {
+		artists = append(artists, types.ArtistRef{
+			ID: artist.ArtistId,
+		})
+	}
+
+	logInfo(fmt.Sprintf("%d artists found", len(artists)))
+
+	return &metadata.SimilarArtistsResponse{Artists: artists}, nil
+}
+
+func (p *clapclapPlugin) queryAPI(route string, params url.Values) ([]byte, error) {
 	apiBaseURL, ok := pdk.GetConfig(configAPIUrl)
 
 	if !ok {
 		return nil, fmt.Errorf("No " + configAPIUrl + " set")
 	}
 
-	params := url.Values{}
-	params.Set("limit", fmt.Sprint(count))
-	params.Set("temperature", fmt.Sprint(temperature))
-	if songId != "" {
-		params.Set("songId", songId)
-	}
-	if albumId != "" {
-		params.Set("albumId", albumId)
-	}
-	if artistId != "" {
-		params.Set("artistId", artistId)
-	}
-
-	apiURL := fmt.Sprintf("%s/similar_songs?%s", apiBaseURL, params.Encode())
+	apiURL := fmt.Sprintf("%s/%s?%s", apiBaseURL, route, params.Encode())
 	logInfo(fmt.Sprintf("query API: %s", apiURL))
 
 	resp, err := host.HTTPSend(host.HTTPRequest{
@@ -130,12 +168,7 @@ func (p *clapclapPlugin) queryAPI(songId string, albumId string, artistId string
 		logInfo(fmt.Sprintf("response status: %d", resp.StatusCode))
 	}
 
-	var tracks []TrackResponse
-	if err := json.Unmarshal(resp.Body, &tracks); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return tracks, nil
+	return resp.Body, nil
 }
 
 func main() {}

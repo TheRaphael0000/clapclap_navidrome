@@ -47,7 +47,7 @@ docker compose up
 
 ## Build locally
 
-requirements:
+Requirements:
 
 - tinygo
 - go
